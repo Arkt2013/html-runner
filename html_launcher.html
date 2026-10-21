@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Launcher - Isolated Browser Tab Runner</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              bg: '#070a12',
+              card: '#0f172a',
+              cardBorder: '#1e293b',
+              dropzone: '#0c1322',
+              accent: '#6366f1',
+              emerald: '#10b981',
+              emeraldHover: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #070a12;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .dropzone-dash {
+      background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='16' ry='16' stroke='%232E3E5C' stroke-width='2' stroke-dasharray='8%2c 8' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+      transition: all 0.2s ease-in-out;
+    }
+    .dropzone-dash.drag-active {
+      background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='16' ry='16' stroke='%236366F1' stroke-width='2' stroke-dasharray='8%2c 8' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+      background-color: rgba(99, 102, 241, 0.05);
+    }
+
+    /* Toast animation */
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .toast-animate {
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+  <!-- Main Container -->
+  <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Top Navigation Header -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+      <!-- Title & Branding -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center font-mono font-bold text-lg shadow-lg shadow-indigo-950/50">
+          &lt;/&gt;
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-bold tracking-tight text-white">HTML Launcher</h1>
+            <span class="px-2 py-0.5 text-xs font-mono font-medium bg-slate-800/80 text-indigo-300 border border-indigo-500/20 rounded-md">about:blank</span>
+          </div>
+          <p class="text-xs text-slate-400">Run local HTML files isolated inside browser tabs</p>
+        </div>
+      </div>
+
+      <!-- Controls & Actions -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Session Mode Badge -->
+        <div class="px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs font-medium text-slate-300 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          Session Mode
+        </div>
+
+        <!-- Auto-Launch Toggle Button -->
+        <button id="toggleAutoLaunchBtn" onclick="toggleAutoLaunch()" class="px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs font-medium text-emerald-400 flex items-center gap-2 hover:bg-emerald-900/40 transition">
+          <i class="fa-solid fa-rocket text-emerald-400 text-xs"></i>
+          <span>Auto-Launch: <strong id="autoLaunchStateText" class="font-bold">ON</strong></span>
+        </button>
+
+        <!-- Settings Gear -->
+        <button onclick="openSettingsModal()" class="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 flex items-center justify-center transition" title="Settings">
+          <i class="fa-solid fa-gear text-sm"></i>
+        </button>
+
+        <!-- Demo File Button -->
+        <button onclick="addDemoFile()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium flex items-center gap-2 shadow-md shadow-indigo-900/30 transition active:scale-95">
+          <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+          <span>Demo File</span>
+        </button>
+
+        <!-- Help Info Button -->
+        <button onclick="openHelpModal()" class="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-300 flex items-center justify-center transition" title="Help & Documentation">
+          <i class="fa-solid fa-circle-question text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+
+    <!-- Drag & Drop Upload Container -->
+    <div 
+      id="dropZone"
+      onclick="document.getElementById('fileInput').click()"
+      class="dropzone-dash rounded-2xl bg-brand-dropzone/50 border-2 border-dashed border-slate-800 p-8 sm:p-12 text-center cursor-pointer hover:border-indigo-500/50 transition-all duration-200 group relative overflow-hidden"
+    >
+      <input type="file" id="fileInput" accept=".html,.htm,.txt" class="hidden" multiple onchange="handleFileSelect(event)">
+      
+      <div class="flex flex-col items-center justify-center space-y-3 pointer-events-none">
+        <!-- Cloud Upload Icon Container -->
+        <div class="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700/60 text-slate-300 group-hover:text-indigo-400 group-hover:border-indigo-500/40 group-hover:bg-slate-800 flex items-center justify-center shadow-inner transition duration-200">
+          <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+        </div>
+
+        <div>
+          <h2 class="text-base sm:text-lg font-semibold text-slate-100 group-hover:text-indigo-200 transition">
+            Drag & Drop your HTML files here
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Or click anywhere to upload files ( <span class="font-mono text-indigo-300 bg-indigo-950/80 px-1.5 py-0.5 rounded text-xs border border-indigo-800/50">.html</span> , <span class="font-mono text-indigo-300 bg-indigo-950/80 px-1.5 py-0.5 rounded text-xs border border-indigo-800/50">.htm</span> )
+          </p>
+        </div>
+
+        <!-- Badges footer -->
+        <div class="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-slate-400">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud text-indigo-400"></i> Auto-saves locally
+          </span>
+          <span class="text-slate-600">•</span>
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i> Runs in isolated viewer
+          </span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Saved Files Section -->
+    <section class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 space-y-5">
+      <!-- Section Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-folder-open text-indigo-400 text-lg"></i>
+          <h2 class="text-base font-bold text-slate-200">Saved Files</h2>
+          <span id="fileCountBadge" class="px-2.5 py-0.5 text-xs font-mono font-medium bg-slate-800 text-slate-300 rounded-full border border-slate-700/60">
+            0 files
+          </span>
+        </div>
+
+        <button 
+          id="clearAllBtn"
+          onclick="confirmClearAll()"
+          class="px-3 py-1.5 rounded-lg bg-red-950/30 hover:bg-red-900/40 text-red-400 text-xs font-medium border border-red-500/20 flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <i class="fa-solid fa-trash-can text-xs"></i>
+          <span>Clear All</span>
+        </button>
+      </div>
+
+      <!-- Files Display Grid / Empty State -->
+      <div id="filesContainer" class="min-h-[200px] flex flex-col justify-center">
+        <!-- Populated via JavaScript -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="w-full max-w-7xl mx-auto px-4 py-4 text-center text-xs text-slate-500">
+    HTML Launcher &bull; Local Client-Side Execution Browser Tool
+  </footer>
+
+
+  <!-- Toast Notification Box -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden transition-all duration-300">
+    <div class="flex items-center gap-3 bg-slate-800 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl shadow-2xl text-xs font-medium toast-animate">
+      <i id="toastIcon" class="fa-solid fa-circle-info text-indigo-400 text-sm"></i>
+      <span id="toastMessage">Action completed successfully</span>
+    </div>
+  </div>
+
+
+  <!-- Source Code Modal -->
+  <div id="sourceModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-code text-indigo-400"></i>
+          <div>
+            <h3 id="sourceModalTitle" class="text-sm font-bold text-slate-200 font-mono">file.html</h3>
+            <p id="sourceModalMeta" class="text-xs text-slate-400">View and edit source HTML code</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="saveSourceChanges()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-floppy-disk"></i> Save
+          </button>
+          <button onclick="closeSourceModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Modal Body (Code Editor Area) -->
+      <div class="p-4 flex-1 overflow-hidden flex flex-col bg-slate-950">
+        <textarea id="sourceEditor" class="w-full flex-1 bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-xs text-indigo-200 focus:outline-none focus:border-indigo-500/60 resize-none leading-relaxed" spellcheck="false"></textarea>
+      </div>
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between px-6 py-3 border-t border-slate-800 bg-slate-900 text-xs text-slate-400">
+        <span id="sourceStats">0 characters</span>
+        <button onclick="launchCurrentSourceModal()" class="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1 transition">
+          <i class="fa-solid fa-rocket text-xs"></i> Launch Code
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Isolated Viewer Preview Modal (Fallback if popups blocked or for inline viewing) -->
+  <div id="previewModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex flex-col">
+    <div class="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <span id="previewTitle" class="text-xs font-mono font-bold text-slate-200">HTML Preview</span>
+        <span class="px-2 py-0.5 text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 rounded font-mono">Isolated Frame</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="openNewTabBtn" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i> Open in New Tab
+        </button>
+        <button onclick="closePreviewModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 bg-white relative">
+      <iframe id="previewIframe" class="w-full h-full border-0" sandbox="allow-scripts allow-modals allow-forms allow-same-origin"></iframe>
+    </div>
+  </div>
+
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-gear text-indigo-400"></i> Launcher Settings
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+          <div>
+            <div class="font-medium text-slate-200">Auto-Launch on Upload</div>
+            <div class="text-slate-400 mt-0.5">Automatically launch file immediately after drop/select</div>
+          </div>
+          <input type="checkbox" id="settingAutoLaunch" onchange="updateSettings()" class="w-4 h-4 rounded accent-indigo-600 cursor-pointer">
+        </div>
+
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+          <div>
+            <div class="font-medium text-slate-200">Preferred Launch Target</div>
+            <div class="text-slate-400 mt-0.5">Where to open launched HTML pages</div>
+          </div>
+          <select id="settingTarget" onchange="updateSettings()" class="bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-1 text-xs outline-none">
+            <option value="newTab">about:blank Tab</option>
+            <option value="modal">Embedded Modal Frame</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeSettingsModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-xs transition">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-indigo-400"></i> About HTML Launcher
+        </h3>
+        <button onclick="closeHelpModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+        <p><strong>HTML Launcher</strong> lets you instantly inspect, edit, and run local HTML, CSS, and JS snippet files in isolated browser environments.</p>
+        <ul class="list-disc list-inside space-y-1 text-slate-400">
+          <li><strong>Direct Storage:</strong> Files are stored locally in IndexedDB storage inside your browser.</li>
+          <li><strong>Isolated Execution:</strong> Open files safely in an isolated <code class="text-indigo-300">about:blank</code> window context.</li>
+          <li><strong>Source Editor:</strong> View or modify source code on the fly without external tools.</li>
+          <li><strong>Demo Generator:</strong> Click <em>Demo File</em> to generate interactive canvas samples immediately.</li>
+        </ul>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeHelpModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-xs transition">
+          Got it!
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Javascript Application Logic -->
+  <script>
+    // --- Application State ---
+    let appState = {
+      autoLaunch: true,
+      launchTarget: 'newTab', // 'newTab' or 'modal'
+      files: [],
+      activeEditingFileId: null,
+      activePreviewCode: ''
+    };
+
+    // --- IndexedDB Configuration ---
+    const DB_NAME = 'HTMLLauncherDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'saved_html_files';
+    let db = null;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains(STORE_NAME)) {
+            database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => {
+          console.error("IndexedDB error:", e);
+          reject(e);
+        };
+      });
+    }
+
+    async function getAllFilesFromDB() {
+      if (!db) await initDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => resolve([]);
+      });
+    }
+
+    async function saveFileToDB(fileObj) {
+      if (!db) await initDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.put(fileObj);
+        request.onsuccess = () => resolve();
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    async function deleteFileFromDB(id) {
+      if (!db) await initDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+      });
+    }
+
+    async function clearAllFilesFromDB() {
+      if (!db) await initDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+      });
+    }
+
+    // --- App Lifecycle Initialization ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Load stored settings
+      const savedSettings = localStorage.getItem('html_launcher_settings');
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          appState.autoLaunch = parsed.autoLaunch ?? true;
+          appState.launchTarget = parsed.launchTarget ?? 'newTab';
+        } catch(e){}
+      }
+      updateAutoLaunchUI();
+      document.getElementById('settingAutoLaunch').checked = appState.autoLaunch;
+      document.getElementById('settingTarget').value = appState.launchTarget;
+
+      // Load files from IndexedDB
+      await loadFiles();
+      setupDragAndDrop();
+    });
+
+    async function loadFiles() {
+      appState.files = await getAllFilesFromDB();
+      renderFiles();
+    }
+
+    // --- Drag & Drop Handlers ---
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('dropZone');
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('drag-active');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('drag-active');
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+          processFiles(files);
+        }
+      });
+    }
+
+    function handleFileSelect(event) {
+      const files = event.target.files;
+      if (files && files.length > 0) {
+        processFiles(files);
+      }
+      event.target.value = ''; // Reset input
+    }
+
+    async function processFiles(fileList) {
+      let lastFile = null;
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const content = await readFileAsText(file);
+        
+        const newFile = {
+          id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: file.name,
+          size: formatBytes(file.size),
+          bytes: file.size,
+          timestamp: formatTime(new Date()),
+          code: content
+        };
+
+        await saveFileToDB(newFile);
+        appState.files.unshift(newFile);
+        lastFile = newFile;
+      }
+
+      renderFiles();
+      showToast(`${fileList.length} file${fileList.length > 1 ? 's' : ''} uploaded`);
+
+      if (appState.autoLaunch && lastFile) {
+        launchFile(lastFile.id);
+      }
+    }
+
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsText(file);
+      });
+    }
+
+    // --- Render File List & Cards ---
+    function renderFiles() {
+      const container = document.getElementById('filesContainer');
+      const countBadge = document.getElementById('fileCountBadge');
+      const clearBtn = document.getElementById('clearAllBtn');
+
+      const count = appState.files.length;
+      countBadge.textContent = `${count} file${count !== 1 ? 's' : ''}`;
+      clearBtn.disabled = count === 0;
+
+      if (count === 0) {
+        container.innerHTML = `
+          <div class="py-12 flex flex-col items-center justify-center text-center space-y-3">
+            <div class="w-12 h-12 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-500 flex items-center justify-center">
+              <i class="fa-solid fa-file-code text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-300">No saved HTML files</h3>
+              <p class="text-xs text-slate-500 max-w-sm mt-1">
+                Drop an HTML file above to view, edit, store, and launch it directly in about:blank.
+              </p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
+      appState.files.forEach(file => {
+        html += `
+          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-4 hover:border-slate-700/80 transition group">
+            <!-- Top Card Row -->
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-9 h-9 shrink-0 rounded-lg bg-indigo-950/50 border border-indigo-800/40 text-indigo-400 flex items-center justify-center font-mono font-bold text-xs">
+                  &lt;/&gt;
+                </div>
+                <div class="min-w-0">
+                  <h4 class="text-xs font-bold text-slate-200 truncate font-mono" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</h4>
+                  <p class="text-[11px] text-slate-500 mt-0.5">${file.timestamp} &bull; ${file.size}</p>
+                </div>
+              </div>
+
+              <!-- Card Action Icons -->
+              <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                <button onclick="downloadFile('${file.id}')" class="w-7 h-7 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition text-xs" title="Download file">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+                <button onclick="deleteFile('${file.id}')" class="w-7 h-7 rounded bg-slate-800/60 hover:bg-red-950/60 text-slate-400 hover:text-red-400 flex items-center justify-center transition text-xs" title="Delete file">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Bottom Card Action Buttons -->
+            <div class="flex items-center gap-2 pt-1">
+              <button onclick="launchFile('${file.id}')" class="flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.98]">
+                <i class="fa-solid fa-rocket text-xs"></i> Launch
+              </button>
+              <button onclick="openSourceModal('${file.id}')" class="py-2 px-3.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 border border-slate-700/60 transition">
+                <i class="fa-solid fa-pen-to-square text-xs"></i> Source
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+
+      container.innerHTML = html;
+    }
+
+    // --- File Actions ---
+    function launchFile(id) {
+      const file = appState.files.find(f => f.id === id);
+      if (!file) return;
+
+      if (appState.launchTarget === 'newTab') {
+        try {
+          const win = window.open('about:blank', '_blank');
+          if (win) {
+            win.document.open();
+            win.document.write(file.code);
+            win.document.close();
+            win.document.title = file.name;
+            showToast(`Launched "${file.name}" in new tab`);
+          } else {
+            // Popup blocked fallback
+            openPreviewModal(file.name, file.code);
+          }
+        } catch(e) {
+          openPreviewModal(file.name, file.code);
+        }
+      } else {
+        openPreviewModal(file.name, file.code);
+      }
+    }
+
+    function openSourceModal(id) {
+      const file = appState.files.find(f => f.id === id);
+      if (!file) return;
+
+      appState.activeEditingFileId = id;
+      document.getElementById('sourceModalTitle').textContent = file.name;
+      document.getElementById('sourceModalMeta').textContent = `${file.timestamp} • ${file.size}`;
+      
+      const editor = document.getElementById('sourceEditor');
+      editor.value = file.code;
+      updateSourceStats();
+
+      editor.oninput = updateSourceStats;
+
+      document.getElementById('sourceModal').classList.remove('hidden');
+    }
+
+    function updateSourceStats() {
+      const val = document.getElementById('sourceEditor').value;
+      const lines = val.split('\n').length;
+      document.getElementById('sourceStats').textContent = `${val.length.toLocaleString()} characters • ${lines} lines`;
+    }
+
+    async function saveSourceChanges() {
+      if (!appState.activeEditingFileId) return;
+      const file = appState.files.find(f => f.id === appState.activeEditingFileId);
+      if (!file) return;
+
+      const newCode = document.getElementById('sourceEditor').value;
+      file.code = newCode;
+      file.bytes = new Blob([newCode]).size;
+      file.size = formatBytes(file.bytes);
+      file.timestamp = formatTime(new Date());
+
+      await saveFileToDB(file);
+      renderFiles();
+      closeSourceModal();
+      showToast(`Updated "${file.name}"`);
+    }
+
+    function launchCurrentSourceModal() {
+      const code = document.getElementById('sourceEditor').value;
+      const title = document.getElementById('sourceModalTitle').textContent;
+      
+      try {
+        const win = window.open('about:blank', '_blank');
+        if (win) {
+          win.document.open();
+          win.document.write(code);
+          win.document.close();
+          win.document.title = title;
+        } else {
+          openPreviewModal(title, code);
+        }
+      } catch(e) {
+        openPreviewModal(title, code);
+      }
+    }
+
+    function closeSourceModal() {
+      document.getElementById('sourceModal').classList.add('hidden');
+      appState.activeEditingFileId = null;
+    }
+
+    function downloadFile(id) {
+      const file = appState.files.find(f => f.id === id);
+      if (!file) return;
+
+      const blob = new Blob([file.code], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Downloaded "${file.name}"`);
+    }
+
+    async function deleteFile(id) {
+      const file = appState.files.find(f => f.id === id);
+      await deleteFileFromDB(id);
+      appState.files = appState.files.filter(f => f.id !== id);
+      renderFiles();
+      showToast(file ? `Deleted "${file.name}"` : 'File deleted');
+    }
+
+    async function confirmClearAll() {
+      if (appState.files.length === 0) return;
+      if (confirm('Are you sure you want to delete all saved HTML files?')) {
+        await clearAllFilesFromDB();
+        appState.files = [];
+        renderFiles();
+        showToast('All saved files cleared');
+      }
+    }
+
+    // --- Isolated Preview Modal (Fallback) ---
+    function openPreviewModal(title, code) {
+      appState.activePreviewCode = code;
+      document.getElementById('previewTitle').textContent = title;
+      
+      const iframe = document.getElementById('previewIframe');
+      iframe.srcdoc = code;
+
+      document.getElementById('openNewTabBtn').onclick = () => {
+        const win = window.open('about:blank', '_blank');
+        if (win) {
+          win.document.open();
+          win.document.write(code);
+          win.document.close();
+          win.document.title = title;
+        }
+      };
+
+      document.getElementById('previewModal').classList.remove('hidden');
+    }
+
+    function closePreviewModal() {
+      document.getElementById('previewModal').classList.add('hidden');
+      document.getElementById('previewIframe').srcdoc = '';
+    }
+
+    // --- Demo File Generator ---
+    async function addDemoFile() {
+      const demoNames = [
+        'interactive_canvas_matrix.html',
+        'cyberpunk_clock.html',
+        'neon_particle_universe.html'
+      ];
+      const selectedName = demoNames[Math.floor(Math.random() * demoNames.length)];
+
+      const demoCode = generateDemoHTML(selectedName);
+      
+      const newFile = {
+        id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name: selectedName,
+        size: formatBytes(new Blob([demoCode]).size),
+        bytes: new Blob([demoCode]).size,
+        timestamp: formatTime(new Date()),
+        code: demoCode
+      };
+
+      await saveFileToDB(newFile);
+      appState.files.unshift(newFile);
+      renderFiles();
+      showToast(`Generated demo "${selectedName}"`);
+
+      if (appState.autoLaunch) {
+        launchFile(newFile.id);
+      }
+    }
+
+    function generateDemoHTML(filename) {
+      if (filename.includes('matrix')) {
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Matrix Rain Demo</title>
+  <style>
+    body { margin: 0; background: #000; overflow: hidden; font-family: monospace; }
+    canvas { display: block; }
+    .badge { position: absolute; top: 20px; left: 20px; color: #0f0; background: rgba(0,20,0,0.8); padding: 10px 16px; border: 1px solid #0f0; border-radius: 8px; font-size: 14px; box-shadow: 0 0 15px rgba(0,255,0,0.3); }
+  </style>
+</head>
+<body>
+  <div class="badge">🚀 Matrix Digital Rain • HTML Launcher Demo</div>
+  <canvas id="c"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const fontSize = 16;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops = Array(columns).fill(1);
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0F0';
+      ctx.font = fontSize + 'px monospace';
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars[Math.floor(Math.random() * chars.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+    }
+    setInterval(draw, 33);
+    window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+  <\/script>
+</body>
+</html>`;
+      } else {
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cyberpunk Neon Clock</title>
+  <style>
+    body { margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #080711; color: #fff; font-family: system-ui, sans-serif; overflow: hidden; }
+    .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 40px 60px; border-radius: 24px; text-align: center; backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .time { font-size: 64px; font-weight: 800; font-family: monospace; background: linear-gradient(135deg, #a855f7, #6366f1, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .label { color: #94a3b8; font-size: 14px; margin-top: 10px; text-transform: uppercase; tracking: 2px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="time" id="clock">00:00:00</div>
+    <div class="label">Isolated Local Browser Demo</div>
+  </div>
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toTimeString().split(' ')[0];
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  <\/script>
+</body>
+</html>`;
+      }
+    }
+
+    // --- Settings & Preferences ---
+    function toggleAutoLaunch() {
+      appState.autoLaunch = !appState.autoLaunch;
+      saveSettings();
+      updateAutoLaunchUI();
+      showToast(`Auto-Launch turned ${appState.autoLaunch ? 'ON' : 'OFF'}`);
+    }
+
+    function updateAutoLaunchUI() {
+      const text = document.getElementById('autoLaunchStateText');
+      const btn = document.getElementById('toggleAutoLaunchBtn');
+      if (appState.autoLaunch) {
+        text.textContent = 'ON';
+        btn.className = "px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs font-medium text-emerald-400 flex items-center gap-2 hover:bg-emerald-900/40 transition";
+      } else {
+        text.textContent = 'OFF';
+        btn.className = "px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs font-medium text-slate-400 flex items-center gap-2 hover:bg-slate-700 transition";
+      }
+    }
+
+    function openSettingsModal() {
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+    function updateSettings() {
+      appState.autoLaunch = document.getElementById('settingAutoLaunch').checked;
+      appState.launchTarget = document.getElementById('settingTarget').value;
+      saveSettings();
+      updateAutoLaunchUI();
+    }
+    function saveSettings() {
+      localStorage.setItem('html_launcher_settings', JSON.stringify({
+        autoLaunch: appState.autoLaunch,
+        launchTarget: appState.launchTarget
+      }));
+    }
+
+    function openHelpModal() {
+      document.getElementById('helpModal').classList.remove('hidden');
+    }
+    function closeHelpModal() {
+      document.getElementById('helpModal').classList.add('hidden');
+    }
+
+    // --- Utility Helpers ---
+    function formatBytes(bytes, decimals = 1) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMessage');
+      toastMsg.textContent = message;
+      
+      toast.classList.remove('hidden');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
